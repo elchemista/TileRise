@@ -121,3 +121,39 @@ it("validates the configured radius and uses it when setLocation omits an overri
   layer.setLocation([10, 45], 50);
   layer.dispose();
 });
+
+it("accepts a fixed WGS84 centre and starts enabled without a GPS fix", () => {
+  const layer = new TileRise({
+    locationOnly: [9.19, 45.4642] as const,
+    radius: 200,
+  });
+  expect(layer.getVisible()).toBe(true);
+  layer.setLocation(null);
+  expect(layer.getVisible()).toBe(false);
+  layer.setLocation([10, 45]);
+  layer.enable();
+  expect(layer.getVisible()).toBe(true);
+  layer.dispose();
+});
+it.each([
+  [],
+  [9],
+  [9, 45, 20],
+  [181, 45],
+  [9, 86],
+  [NaN, 45],
+  [9, Infinity],
+  ["9", 45],
+  {},
+  "GPS",
+  null,
+])("rejects malformed locationOnly coordinates: %j", (locationOnly) => {
+  expect(() => new TileRise({ locationOnly: locationOnly as never })).toThrow();
+});
+it("preserves visible viewport mode for false or omitted locationOnly", () => {
+  for (const options of [{}, { locationOnly: false }]) {
+    const layer = new TileRise(options);
+    expect(layer.getVisible()).toBe(true);
+    layer.dispose();
+  }
+});

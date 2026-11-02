@@ -19,7 +19,7 @@ npm run build
 npm pack
 
 # In your application: use the actual path printed by npm pack
-npm install /path/to/tilerise/tilerise-0.1.3.tgz
+npm install /path/to/tilerise/tilerise-0.1.4.tgz
 ```
 
 ```ts
@@ -76,7 +76,7 @@ map.removeLayer(buildings);
 buildings.dispose();
 ```
 
-The local RDM SPA now installs the package from `vendor/tilerise-0.1.3.tgz` and enables it in both navigation adapters. The snippets above describe that integration; consumers of this standalone package still add the layer explicitly. Its existing offline cache does not automatically cache building requests; provide an offline-capable provider if offline building coverage is required.
+The local RDM SPA now installs the package from `vendor/tilerise-0.1.4.tgz` and enables it in both navigation adapters. The snippets above describe that integration; consumers of this standalone package still add the layer explicitly. Its existing offline cache does not automatically cache building requests; provide an offline-capable provider if offline building coverage is required.
 
 ## Basemaps and building data are separate
 
@@ -201,6 +201,88 @@ const buildings = new TileRise({
 
 The custom resolver falls through to normal properties when it returns an invalid or missing value. It must be synchronous and should not throw.
 
+## `locationOnly`: GPS mode or a fixed centre
+
+`locationOnly` accepts a boolean or a WGS84 coordinate pair. Coordinates are always
+**`[longitude, latitude]` in decimal degrees**, even if the OpenLayers view uses
+EPSG:3857 or another supported projection.
+
+| Value | Behaviour at construction |
+| --- | --- |
+| Omitted or `false` | Enabled; loads around the visible map viewport |
+| `true` | Disabled; waits for your application to supply a location and enable it |
+| `[longitude, latitude]` | Enabled; loads/renders around that fixed centre using `radius` |
+
+### Fixed area without GPS
+
+```ts
+const buildings = new TileRise({
+  locationOnly: [9.19, 45.4642], // longitude, latitude: Milan
+  radius: 200,                 // metres around this point
+});
+map.getLayers().insertAt(1, buildings);
+```
+
+No `setLocation()` or `enable()` call is needed initially in the coordinate form.
+Loading still observes `minZoom`, `maxResolution`, visibility and provider limits.
+Panning or rotating the map does not move the configured 3D area or restart its query.
+The array is copied, so changing your original array does not move the centre either.
+
+The coordinate form centres **the building coverage**, not the OpenLayers camera;
+it does not add a location marker. If you also want to navigate the view to that point,
+use OpenLayers explicitly:
+
+```ts
+import { transform } from 'ol/proj.js';
+
+map.getView().setCenter(
+  transform([9.19, 45.4642], 'EPSG:4326', map.getView().getProjection()),
+);
+map.getView().setZoom(18);
+```
+
+### Follow an application-provided GPS fix
+
+```ts
+const buildings = new TileRise({ locationOnly: true, radius: 200 });
+map.getLayers().insertAt(1, buildings);
+
+// After your application receives a valid GPS fix:
+buildings.setLocation([fix.longitude, fix.latitude]);
+buildings.enable();
+```
+
+TileRise does not request geolocation permission or start its own GPS watcher. RDM
+already supplies this lifecycle, including disabling the layer in static mode and
+on satellite basemaps.
+
+### Change, suspend and resume the centre
+
+These methods work with both `true` and coordinate forms:
+
+```ts
+buildings.setLocation([12.4964, 41.9028]);      // move coverage; use constructor radius
+buildings.setLocation([12.4964, 41.9028], 150); // override radius for this location
+buildings.setLocation(null);                 // hide and cancel pending requests
+
+buildings.setLocation([9.19, 45.4642]);
+buildings.enable();                          // resume after suspension
+```
+
+`setLocation()` keeps the current visibility state: moving an enabled fixed-centre
+layer updates it immediately; supplying a point after suspension also requires
+`enable()`. A call without a radius always uses the constructor's `radius`, not a
+previous per-location override. Use `setLocation()` to change the area at runtime;
+`setOptions()` is reserved for rendering/height options.
+
+Both coordinate entry points reject non-finite values, incorrect array lengths,
+longitudes outside −180…180 and latitudes outside −85…85. Invalid input throws
+before a map supplied to the constructor is modified. Radius must be greater than
+zero and at most 1000 metres; the default is 100. The built-in OSM recovery endpoint
+supports up to 200 metres; for larger areas Overpass or your configured provider
+must succeed. Supplying `source` continues to disable automatic network loading;
+the location/radius still filter rendering of those source features.
+
 ## GPS-only navigation and visual pitch
 
 RDM now uses `new TileRise({ locationOnly: true, radius: 200 })`. The plugin defaults to 100 metres; `radius` accepts a positive value up to 1000 metres. It starts hidden and makes no
@@ -250,6 +332,8 @@ instant rendering. Only active entrance transitions request additional frames.
 | `requestTimeoutMs` | `30000` | Provider request timeout |
 | `maxQueryArea` | `0.004` | Maximum bbox area in square degrees; zoom in if exceeded |
 | `onStatus` | — | Loading/coverage/error callback |
+| `locationOnly` | `false` | Viewport mode, GPS mode (`true`) or a fixed WGS84 `[longitude, latitude]` centre |
+| `radius` | `100` | Default location radius in metres, greater than zero and up to 1000 |
 | `source`, `provider`, `map` | — | Optional source override, provider or immediate map attachment |
 
 ```ts

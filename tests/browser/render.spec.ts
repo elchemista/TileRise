@@ -211,3 +211,65 @@ test("tilted and rotated map keeps POI hit detection aligned", async ({
     .poll(() => page.evaluate(() => (window as any).picked))
     .toBe("navigation-poi");
 });
+
+test("coordinate locationOnly loads its fixed centre automatically and keeps it when the map moves", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.locator(".tilerise-layer")).toBeVisible();
+  await page.evaluate(async () => {
+    const path = "/src/index.ts";
+    const { default: TileRise } = await import(/* @vite-ignore */ path);
+    const { map, rise } = (window as any).tileRiseDemo;
+    const features = rise.getSource().getFeatures();
+    map.removeLayer(rise);
+    rise.dispose();
+    const coordinate: [number, number] = [9.19, 45.4642];
+    (window as any).fixedRequests = [];
+    const fixed = new TileRise({
+      locationOnly: coordinate,
+      radius: 200,
+      provider: {
+        attribution: "Test data",
+        async load(request: any) {
+          (window as any).fixedRequests.push(request.location);
+          return features;
+        },
+      },
+    });
+    // Callers can reuse/mutate their input array; the layer owns a copy of the centre.
+    coordinate[0] = 10;
+    map.getLayers().insertAt(1, fixed);
+    (window as any).fixedLayer = fixed;
+  });
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as any).fixedLayer.getStatus().state),
+    )
+    .toBe("ready");
+  expect(await page.evaluate(() => (window as any).fixedRequests)).toEqual([
+    { center: [9.19, 45.4642], radius: 200 },
+  ]);
+  await page.evaluate(() => {
+    const { map } = (window as any).tileRiseDemo;
+    const center = map.getView().getCenter();
+    map.getView().setCenter([center[0] + 1000, center[1]]);
+    map.getView().setRotation(1);
+    map.renderSync();
+  });
+  expect(await page.evaluate(() => (window as any).fixedRequests.length)).toBe(
+    1,
+  );
+  await page.evaluate(() =>
+    (window as any).fixedLayer.setLocation([9.21, 45.4642]),
+  );
+  await expect
+    .poll(() => page.evaluate(() => (window as any).fixedRequests.length))
+    .toBe(2);
+  expect(await page.evaluate(() => (window as any).fixedRequests[1])).toEqual({
+    center: [9.21, 45.4642],
+    radius: 200,
+  });
+  await page.evaluate(() => (window as any).fixedLayer.setLocation(null));
+  await expect(page.locator(".tilerise-layer")).toHaveCount(0);
+});

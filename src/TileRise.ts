@@ -22,8 +22,9 @@ export interface TileRiseOptions extends Partial<Omit<RenderOptions, "sun">> {
   map?: Map;
   source?: VectorSource<Feature>;
   provider?: BuildingProvider;
-  /** Only load/render around setLocation(), never the viewport. Starts disabled. */
-  locationOnly?: boolean;
+  /** true waits for setLocation()/enable(); a WGS84 [longitude, latitude] pair
+   * starts enabled around that centre. Neither form moves the map view. */
+  locationOnly?: boolean | readonly [number, number];
   /** Default GPS query/render radius in metres (1–1000). */
   radius?: number;
   minZoom?: number;
@@ -82,6 +83,15 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
     { features: Feature[]; extent: number[]; time: number }
   >();
   constructor(options: TileRiseOptions = {}) {
+    if (
+      options.locationOnly !== undefined &&
+      typeof options.locationOnly !== "boolean" &&
+      !Array.isArray(options.locationOnly)
+    ) {
+      throw new TypeError(
+        "locationOnly must be a boolean or [longitude, latitude]",
+      );
+    }
     const provider = options.source
       ? undefined
       : (options.provider ??
@@ -92,7 +102,7 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
       source:
         options.source ??
         new VectorSource({ wrapX: false, attributions: provider?.attribution }),
-      visible: !options.locationOnly,
+      visible: options.locationOnly !== true,
       minZoom: options.minZoom ?? 15,
       maxResolution: options.maxResolution ?? 5,
     });
@@ -110,6 +120,8 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
     };
     this.validate();
     this.provider = provider;
+    if (Array.isArray(options.locationOnly))
+      this.setLocation(options.locationOnly as [number, number]);
     this.on("change:visible", () => {
       if (!this.getVisible()) this.cancel();
     });
@@ -199,13 +211,18 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
     this.changed();
   }
   /** WGS84 longitude/latitude. null suspends location mode and cancels requests. */
-  setLocation(center: [number, number] | null, radius = this.config.radius!) {
+  setLocation(
+    center: readonly [number, number] | null,
+    radius = this.config.radius!,
+  ) {
     if (!center) {
       this.location = undefined;
       this.disable();
       return;
     }
     if (
+      !Array.isArray(center) ||
+      center.length !== 2 ||
       !center.every(Number.isFinite) ||
       Math.abs(center[0]) > 180 ||
       Math.abs(center[1]) > 85 ||
@@ -219,7 +236,7 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
       this.coveredLocation = undefined;
       this.cancel();
     }
-    this.location = { center: [...center], radius };
+    this.location = { center: [center[0], center[1]], radius };
     this.changed();
   }
   getStatus(): Readonly<TileRiseStatus> {
