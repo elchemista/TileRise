@@ -19,7 +19,7 @@ npm run build
 npm pack
 
 # In your application: use the actual path printed by npm pack
-npm install /path/to/tilerise/tilerise-0.1.2.tgz
+npm install /path/to/tilerise/tilerise-0.1.3.tgz
 ```
 
 ```ts
@@ -52,7 +52,7 @@ import TileRise from 'tilerise';
 // Inside the existing new Map({ ... }) call:
 layers: [
   baseMap.layer,
-  new TileRise({ locationOnly: true }),
+  new TileRise({ locationOnly: true, radius: 200 }),
   // existing notificationAreas layer
   // existing content / route / POI layer
   // existing accuracy / position layer (zIndex: 10)
@@ -76,7 +76,7 @@ map.removeLayer(buildings);
 buildings.dispose();
 ```
 
-The local RDM SPA now installs the package from `vendor/tilerise-0.1.2.tgz` and enables it in both navigation adapters. The snippets above describe that integration; consumers of this standalone package still add the layer explicitly. Its existing offline cache does not automatically cache building requests; provide an offline-capable provider if offline building coverage is required.
+The local RDM SPA now installs the package from `vendor/tilerise-0.1.3.tgz` and enables it in both navigation adapters. The snippets above describe that integration; consumers of this standalone package still add the layer explicitly. Its existing offline cache does not automatically cache building requests; provide an offline-capable provider if offline building coverage is required.
 
 ## Basemaps and building data are separate
 
@@ -203,16 +203,16 @@ The custom resolver falls through to normal properties when it returns an invali
 
 ## GPS-only navigation and visual pitch
 
-RDM now uses `new TileRise({ locationOnly: true })`. It starts hidden and makes no
+RDM now uses `new TileRise({ locationOnly: true, radius: 200 })`. The plugin defaults to 100 metres; `radius` accepts a positive value up to 1000 metres. It starts hidden and makes no
 requests before a valid GPS fix. While following the user, call
-`buildings.setLocation([longitude, latitude], 100)` and `buildings.enable()`.
+`buildings.setLocation([longitude, latitude])` and `buildings.enable()`.
 Call `buildings.setLocation(null)` when entering static/preview mode or stopping GPS.
-Queries are centred on that fix, not the visible map; only footprints within 100 m
+An explicit second argument to `setLocation(center, radius)` overrides the constructor radius for that fix. Queries are centred on that fix, not the visible map; only footprints within the configured radius
 are rendered. GPS movements of up to 20 m reuse coverage, while rotation never
 changes the query. New coverage can therefore lag by up to 20 m at the boundary.
 
 The location-only default provider tries Overpass for eight seconds, then uses the
-OSM map API for a strictly bounded <=100 m query. The latter is limited to one call
+OSM map API for a strictly bounded <=200 m query. The latter is limited to one call
 per 30 seconds per instance. This is a small-area prototype fallback, not a backend
 for production fleets; use a dedicated provider for sustained production traffic.
 Partial multipolygon relations at the fallback bbox boundary may be unavailable.

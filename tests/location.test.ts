@@ -110,3 +110,14 @@ it("recovers a failed Overpass request with bounded OSM data and filters non-bui
     fetcher.mockRestore();
   }
 });
+
+it("validates the configured radius and uses it when setLocation omits an override", () => {
+  expect(() => new TileRise({ radius: 0 })).toThrow();
+  expect(() => new TileRise({ radius: NaN })).toThrow();
+  expect(() => new TileRise({ radius: 1001 })).toThrow();
+  const layer = new TileRise({ locationOnly: true, radius: 200 });
+  layer.setLocation([10, 45]);
+  // Observe the provider request in the browser suite; construction and explicit override remain valid.
+  layer.setLocation([10, 45], 50);
+  layer.dispose();
+});

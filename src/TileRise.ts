@@ -24,6 +24,8 @@ export interface TileRiseOptions extends Partial<Omit<RenderOptions, "sun">> {
   provider?: BuildingProvider;
   /** Only load/render around setLocation(), never the viewport. Starts disabled. */
   locationOnly?: boolean;
+  /** Default GPS query/render radius in metres (1–1000). */
+  radius?: number;
   minZoom?: number;
   maxResolution?: number;
   debounceMs?: number;
@@ -95,6 +97,7 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
       maxResolution: options.maxResolution ?? 5,
     });
     this.config = {
+      radius: 100,
       debounceMs: 350,
       requestTimeoutMs: 30000,
       maxQueryArea: 0.004,
@@ -127,6 +130,14 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
     if (options.map) options.map.getLayers().insertAt(1, this);
   }
   private validate() {
+    if (
+      !Number.isFinite(this.config.radius) ||
+      this.config.radius! <= 0 ||
+      this.config.radius! > 1000
+    )
+      throw new RangeError(
+        "radius must be greater than 0 and at most 1000 metres",
+      );
     if (
       !Number.isFinite(this.getMinZoom()) ||
       !Number.isFinite(this.getMaxResolution()) ||
@@ -188,7 +199,7 @@ export default class TileRise extends Layer<VectorSource<Feature>> {
     this.changed();
   }
   /** WGS84 longitude/latitude. null suspends location mode and cancels requests. */
-  setLocation(center: [number, number] | null, radius = 100) {
+  setLocation(center: [number, number] | null, radius = this.config.radius!) {
     if (!center) {
       this.location = undefined;
       this.disable();

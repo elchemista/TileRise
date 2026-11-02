@@ -112,17 +112,15 @@ export function enrichProvider(
 
 /** Small-area recovery for interactive GPS prototypes, never a viewport-wide OSM download.
  * Prefer a dedicated building backend for production fleets. OSM fallback is limited
- * to radius <=100m and at most one request per 30 seconds per provider instance. */
+ * to radius <=200m and at most one request per 30 seconds per provider instance. */
 export function nearbyOSMProvider(): BuildingProvider {
   const primary = overpassProvider();
   let lastFallback = -Infinity;
   return {
     attribution: primary.attribution,
     async load(request) {
-      if (!request.location || request.location.radius > 100)
-        throw new Error(
-          "Nearby OSM requires a GPS radius of at most 100 metres",
-        );
+      if (!request.location)
+        throw new Error("Nearby OSM requires a GPS location");
       const timeout = new AbortController();
       const timer = setTimeout(() => timeout.abort(), 8000);
       const signal = AbortSignal.any([request.signal, timeout.signal]);
@@ -134,6 +132,10 @@ export function nearbyOSMProvider(): BuildingProvider {
         clearTimeout(timer);
       }
       request.signal.throwIfAborted();
+      if (request.location.radius > 200)
+        throw new Error(
+          "OSM fallback supports GPS radii up to 200 metres; configure a dedicated provider for larger areas",
+        );
       if (Date.now() - lastFallback < 30000)
         throw new Error("OSM building fallback cooling down");
       lastFallback = Date.now();
