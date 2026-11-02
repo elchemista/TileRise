@@ -1,0 +1,9 @@
+node_modules/
+dist/
+demo-dist/
+test-results/
+playwright-report/
+.env*
+
+# Local credential mounts and machine-specific files
+.aws

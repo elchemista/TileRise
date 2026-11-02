@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>TileRise · OpenLayers buildings</title>
+  </head>
+  <body>
+    <div id="map"></div>
+    <aside>
+      <header>
+        <span class="mark">▰</span>
+        <div>
+          <h1>TileRise<span>LAB</span></h1>
+          <p>Una dimensione in più alla tua mappa.</p>
+        </div>
+      </header>
+      <section>
+        <label
+          >Area di lavoro<select id="data">
+            <option value="fixture">Scena di verifica · Milano</option>
+            <option value="live">Edifici reali · OpenStreetMap</option>
+          </select></label
+        ><label
+          >Fondo mappa<select id="base">
+            <option value="osm">OpenStreetMap</option>
+            <option value="roadmap">Google · strade</option>
+            <option value="satellite">Google · satellite</option>
+          </select></label
+        ><label id="key-label"
+          >Google Map Tiles API key<input
+            id="key"
+            type="password"
+            placeholder="Richiesta solo per Google"
+            autocomplete="off"
+        /></label>
+      </section>
+      <section>
+        <h2>Volumi e luce</h2>
+        <label class="toggle"
+          >Edifici 3D<input id="enabled" type="checkbox" checked /></label
+        ><label class="toggle"
+          >Facciate piene<input id="walls" type="checkbox" checked /></label
+        ><label class="toggle"
+          >Ombre a terra<input id="shadows" type="checkbox" checked /></label
+        ><label class="toggle"
+          >Luce direzionale<input
+            id="lighting"
+            type="checkbox"
+            checked /></label
+        ><label
+          >Scala altezza <output id="scale-value">1×</output
+          ><input
+            id="scale"
+            type="range"
+            min="0.2"
+            max="2"
+            step="0.1"
+            value="1" /></label
+        ><label
+          >Direzione del sole<input
+            id="azimuth"
+            type="range"
+            min="0"
+            max="360"
+            value="225" /></label
+        ><label
+          >Elevazione del sole<input
+            id="elevation"
+            type="range"
+            min="5"
+            max="90"
+            value="45" /></label
+        ><label
+          >Rotazione mappa<input
+            id="rotation"
+            type="range"
+            min="-180"
+            max="180"
+            value="0"
+        /></label>
+        <div class="colors">
+          <label>Tetti<input id="roof" type="color" value="#edf1e9" /></label
+          ><label>Pareti<input id="wall" type="color" value="#c4cfce" /></label>
+        </div>
+      </section>
+      <footer>
+        <span class="dot"></span>
+        <p id="status" role="status">Scena locale · 5 edifici di verifica</p>
+        <button id="reset">Centra Milano ↗</button
+        ><small
+          >Canvas 2.5D · OpenLayers<br />Le altezze mancanti sono
+          stimate.</small
+        >
+      </footer>
+    </aside>
+    <div class="caption">
+      <b>LA CITTÀ PRENDE FORMA.</b
+      ><span>Trascina per esplorare · Scorri per avvicinarti</span>
+    </div>
+    <script type="module" src="/demo/main.ts"></script>
+  </body>
+</html>
